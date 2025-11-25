@@ -1,5 +1,9 @@
+// PDF.js 워커 설정
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
 // 전역 변수
 let selectedFiles = [];
+let openaiApiKey = localStorage.getItem('openai_api_key') || '';
 
 // DOM 요소
 const dropZone = document.getElementById('dropZone');
@@ -15,10 +19,23 @@ const previewSection = document.getElementById('previewSection');
 const previewList = document.getElementById('previewList');
 const processBtn = document.getElementById('processBtn');
 const messageDiv = document.getElementById('message');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeModal = document.getElementById('closeModal');
+const apiKeyInput = document.getElementById('apiKey');
+const saveApiBtn = document.getElementById('saveApiBtn');
+const testApiBtn = document.getElementById('testApiBtn');
+const apiStatus = document.getElementById('apiStatus');
+const statusIndicator = document.getElementById('statusIndicator');
+const statusText = document.getElementById('statusText');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const loadingText = document.getElementById('loadingText');
 
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
+    updateApiStatus();
 });
 
 // 이벤트 리스너 설정
@@ -41,6 +58,22 @@ function setupEventListeners() {
 
     // 처리 버튼
     processBtn.addEventListener('click', processFiles);
+
+    // AI 분석 버튼
+    analyzeBtn.addEventListener('click', analyzeFilesWithAI);
+
+    // 설정 관련
+    settingsBtn.addEventListener('click', openSettings);
+    closeModal.addEventListener('click', closeSettings);
+    saveApiBtn.addEventListener('click', saveApiKey);
+    testApiBtn.addEventListener('click', testApiConnection);
+
+    // 모달 외부 클릭 시 닫기
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            closeSettings();
+        }
+    });
 }
 
 // 드래그 오버
@@ -85,6 +118,7 @@ function addFiles(files) {
 
     updatePreview();
     processBtn.disabled = selectedFiles.length === 0;
+    analyzeBtn.disabled = selectedFiles.length === 0 || !openaiApiKey;
 }
 
 // 파일 제거
@@ -93,6 +127,7 @@ function removeFile(index) {
     updateFileList();
     updatePreview();
     processBtn.disabled = selectedFiles.length === 0;
+    analyzeBtn.disabled = selectedFiles.length === 0 || !openaiApiKey;
 
     if (selectedFiles.length === 0) {
         fileListSection.style.display = 'none';
@@ -185,6 +220,263 @@ function extractInfoFromFirstFile() {
     }
 }
 
+// PDF에서 텍스트 추출
+async function extractTextFromPDF(file) {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        let fullText = '';
+        const maxPages = Math.min(pdf.numPages, 3); // 최대 3페이지만 읽기
+
+        for (let i = 1; i <= maxPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+        }
+
+        return fullText;
+    } catch (error) {
+        console.error('PDF 텍스트 추출 실패:', error);
+        return null;
+    }
+}
+
+// OpenAI API로 문서 분석
+async function analyzeWithOpenAI(text, fileName) {
+    const prompt = `다음은 회계 서류 PDF에서 추출한 텍스트입니다. 이 문서를 분석하여 다음 정보를 JSON 형식으로 추출해주세요:
+
+파일명: ${fileName}
+
+문서 내용:
+${text.substring(0, 3000)}
+
+추출할 정보:
+1. documentType: 문서 유형 (지출결의서, 광고정산품의서, 선지급품의서, 세금계산서, 견적서, 게재신청서, 거래명세서, 계약서, 약정서, 합의서, 협약서, 확약서, 각서, 약속서, 결과물, 사업자등록증, 통장사본 중 하나)
+2. adName: 광고명 또는 캠페인명
+3. month: 월 (예: "8월" 형식)
+4. companyA: 갑 업체명 (기본값: 메가존)
+5. companyB: 을 업체명 (메가존이 아닌 거래처)
+
+응답은 반드시 다음 JSON 형식으로만 답변해주세요:
+{
+  "documentType": "문서유형",
+  "adName": "광고명",
+  "month": "N월",
+  "companyA": "메가존",
+  "companyB": "업체명"
+}`;
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${openaiApiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-5-mini',
+                messages: [
+                    {
+                        role: 'system',
+                        content: '당신은 한국어 회계 서류 분석 전문가입니다. 문서에서 필요한 정보를 정확하게 추출합니다.'
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.3,
+                max_tokens: 500
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || 'API 호출 실패');
+        }
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+
+        // JSON 추출
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        throw new Error('JSON 파싱 실패');
+    } catch (error) {
+        console.error('OpenAI API 오류:', error);
+        throw error;
+    }
+}
+
+// AI로 파일 분석
+async function analyzeFilesWithAI() {
+    if (!openaiApiKey) {
+        showMessage('OpenAI API 키를 먼저 설정해주세요.', 'error');
+        openSettings();
+        return;
+    }
+
+    if (selectedFiles.length === 0) {
+        showMessage('분석할 파일을 선택해주세요.', 'error');
+        return;
+    }
+
+    showLoading('PDF 분석 중...');
+
+    try {
+        // PDF 파일만 필터링
+        const pdfFiles = selectedFiles.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+
+        if (pdfFiles.length === 0) {
+            hideLoading();
+            showMessage('PDF 파일이 없습니다. PDF 파일을 추가해주세요.', 'error');
+            return;
+        }
+
+        // 첫 번째 PDF 파일 분석
+        const firstPdf = pdfFiles[0];
+        updateLoadingText(`"${firstPdf.name}" 분석 중...`);
+
+        const text = await extractTextFromPDF(firstPdf);
+
+        if (!text) {
+            hideLoading();
+            showMessage('PDF에서 텍스트를 추출할 수 없습니다.', 'error');
+            return;
+        }
+
+        updateLoadingText('AI로 정보 추출 중...');
+        const result = await analyzeWithOpenAI(text, firstPdf.name);
+
+        // 결과를 입력 필드에 자동 채우기
+        if (result.adName) adNameInput.value = result.adName;
+        if (result.month) monthInput.value = result.month;
+        if (result.companyA) companyAInput.value = result.companyA;
+        if (result.companyB) companyBInput.value = result.companyB;
+
+        updatePreview();
+        hideLoading();
+        showMessage('AI 분석이 완료되었습니다!', 'success');
+    } catch (error) {
+        hideLoading();
+        showMessage(`분석 실패: ${error.message}`, 'error');
+    }
+}
+
+// 로딩 표시
+function showLoading(text = 'PDF 분석 중...') {
+    loadingText.textContent = text;
+    loadingOverlay.style.display = 'flex';
+}
+
+// 로딩 숨김
+function hideLoading() {
+    loadingOverlay.style.display = 'none';
+}
+
+// 로딩 텍스트 업데이트
+function updateLoadingText(text) {
+    loadingText.textContent = text;
+}
+
+// 설정 열기
+function openSettings() {
+    apiKeyInput.value = openaiApiKey;
+    settingsModal.style.display = 'flex';
+    updateApiStatus();
+}
+
+// 설정 닫기
+function closeSettings() {
+    settingsModal.style.display = 'none';
+}
+
+// API 키 저장
+function saveApiKey() {
+    const newApiKey = apiKeyInput.value.trim();
+
+    if (!newApiKey) {
+        showMessage('API 키를 입력해주세요.', 'error');
+        return;
+    }
+
+    if (!newApiKey.startsWith('sk-')) {
+        showMessage('올바른 OpenAI API 키 형식이 아닙니다.', 'error');
+        return;
+    }
+
+    openaiApiKey = newApiKey;
+    localStorage.setItem('openai_api_key', newApiKey);
+
+    updateApiStatus();
+    analyzeBtn.disabled = selectedFiles.length === 0 || !openaiApiKey;
+
+    showMessage('API 키가 저장되었습니다.', 'success');
+    closeSettings();
+}
+
+// API 연결 테스트
+async function testApiConnection() {
+    const testKey = apiKeyInput.value.trim();
+
+    if (!testKey) {
+        showMessage('API 키를 입력해주세요.', 'error');
+        return;
+    }
+
+    testApiBtn.disabled = true;
+    testApiBtn.textContent = '테스트 중...';
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${testKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-5-mini',
+                messages: [{ role: 'user', content: 'Hello' }],
+                max_tokens: 5
+            })
+        });
+
+        if (response.ok) {
+            statusIndicator.className = 'status-indicator connected';
+            statusText.textContent = 'API 연결 성공!';
+            showMessage('API 연결 테스트 성공!', 'success');
+        } else {
+            const error = await response.json();
+            statusIndicator.className = 'status-indicator error';
+            statusText.textContent = `연결 실패: ${error.error?.message || '알 수 없는 오류'}`;
+            showMessage('API 연결 실패. 키를 확인해주세요.', 'error');
+        }
+    } catch (error) {
+        statusIndicator.className = 'status-indicator error';
+        statusText.textContent = `연결 실패: ${error.message}`;
+        showMessage('API 연결 실패. 네트워크를 확인해주세요.', 'error');
+    } finally {
+        testApiBtn.disabled = false;
+        testApiBtn.textContent = '연결 테스트';
+    }
+}
+
+// API 상태 업데이트
+function updateApiStatus() {
+    if (openaiApiKey) {
+        statusIndicator.className = 'status-indicator connected';
+        statusText.textContent = 'API 키가 설정되었습니다';
+    } else {
+        statusIndicator.className = 'status-indicator';
+        statusText.textContent = 'API 키가 설정되지 않았습니다';
+    }
+}
+
 // 파일 유형 및 넘버링 결정
 function getFileTypeAndNumber(fileName) {
     const baseName = fileName.toLowerCase();
@@ -227,7 +519,7 @@ function getFileTypeAndNumber(fileName) {
         return { number: '3-1', type: '세금계산서', needsFullInfo: true, sender: 'B' };
     }
 
-    // 4: 견적서, 게재신청서, 거래명세서
+    // 4: 견적서, 게재신청서, 거래명세서, 계약서 관련
     if (baseName.includes('견적서') || baseName.includes('견적')) {
         return { number: '4', type: '견적서', needsFullInfo: true };
     }
@@ -236,6 +528,29 @@ function getFileTypeAndNumber(fileName) {
     }
     if (baseName.includes('거래명세서') || baseName.includes('거래명세')) {
         return { number: '4', type: '거래명세서', needsFullInfo: true };
+    }
+
+    // 계약서 관련 (계약서, 약정서, 합의서, 협약서, 확약서, 각서, 약속서)
+    if (baseName.includes('계약서') || baseName.includes('계약')) {
+        return { number: '4', type: '계약서', needsFullInfo: true };
+    }
+    if (baseName.includes('약정서') || baseName.includes('약정')) {
+        return { number: '4', type: '약정서', needsFullInfo: true };
+    }
+    if (baseName.includes('합의서') || baseName.includes('합의')) {
+        return { number: '4', type: '합의서', needsFullInfo: true };
+    }
+    if (baseName.includes('협약서') || baseName.includes('협약')) {
+        return { number: '4', type: '협약서', needsFullInfo: true };
+    }
+    if (baseName.includes('확약서') || baseName.includes('확약')) {
+        return { number: '4', type: '확약서', needsFullInfo: true };
+    }
+    if (baseName.includes('각서')) {
+        return { number: '4', type: '각서', needsFullInfo: true };
+    }
+    if (baseName.includes('약속서') || baseName.includes('약속')) {
+        return { number: '4', type: '약속서', needsFullInfo: true };
     }
 
     // 5: 결과물 (리포트, 보고서)
