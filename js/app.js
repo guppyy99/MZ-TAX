@@ -253,7 +253,7 @@ async function analyzeWithOpenAI(text, fileName) {
 ${text.substring(0, 3000)}
 
 추출할 정보:
-1. documentType: 문서 유형 (지출결의서, 광고정산품의서, 선지급품의서, 세금계산서, 견적서, 게재신청서, 거래명세서, 결과물, 사업자등록증, 통장사본 중 하나)
+1. documentType: 문서 유형 (지출결의서, 광고정산품의서, 선지급품의서, 세금계산서, 견적서, 게재신청서, 거래명세서, 계약서, 약정서, 합의서, 협약서, 확약서, 각서, 약속서, 결과물, 사업자등록증, 통장사본 중 하나)
 2. adName: 광고명 또는 캠페인명
 3. month: 월 (예: "8월" 형식)
 4. companyA: 갑 업체명 (기본값: 메가존)
@@ -519,7 +519,7 @@ function getFileTypeAndNumber(fileName) {
         return { number: '3-1', type: '세금계산서', needsFullInfo: true, sender: 'B' };
     }
 
-    // 4: 견적서, 게재신청서, 거래명세서
+    // 4: 견적서, 게재신청서, 거래명세서, 계약서 관련
     if (baseName.includes('견적서') || baseName.includes('견적')) {
         return { number: '4', type: '견적서', needsFullInfo: true };
     }
@@ -528,6 +528,29 @@ function getFileTypeAndNumber(fileName) {
     }
     if (baseName.includes('거래명세서') || baseName.includes('거래명세')) {
         return { number: '4', type: '거래명세서', needsFullInfo: true };
+    }
+
+    // 계약서 관련 (계약서, 약정서, 합의서, 협약서, 확약서, 각서, 약속서)
+    if (baseName.includes('계약서') || baseName.includes('계약')) {
+        return { number: '4', type: '계약서', needsFullInfo: true };
+    }
+    if (baseName.includes('약정서') || baseName.includes('약정')) {
+        return { number: '4', type: '약정서', needsFullInfo: true };
+    }
+    if (baseName.includes('합의서') || baseName.includes('합의')) {
+        return { number: '4', type: '합의서', needsFullInfo: true };
+    }
+    if (baseName.includes('협약서') || baseName.includes('협약')) {
+        return { number: '4', type: '협약서', needsFullInfo: true };
+    }
+    if (baseName.includes('확약서') || baseName.includes('확약')) {
+        return { number: '4', type: '확약서', needsFullInfo: true };
+    }
+    if (baseName.includes('각서')) {
+        return { number: '4', type: '각서', needsFullInfo: true };
+    }
+    if (baseName.includes('약속서') || baseName.includes('약속')) {
+        return { number: '4', type: '약속서', needsFullInfo: true };
     }
 
     // 5: 결과물 (리포트, 보고서)
