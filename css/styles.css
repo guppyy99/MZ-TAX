@@ -1,0 +1,364 @@
+/* 기본 스타일 및 리셋 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    background: #f7f7f8;
+    color: #202123;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* 헤더 */
+.header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #202123;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 1rem;
+    color: #6e6e80;
+    font-weight: 400;
+}
+
+/* 메인 콘텐츠 */
+.main-content {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* 섹션 타이틀 */
+.section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #202123;
+    margin-bottom: 1rem;
+}
+
+/* 드롭존 */
+.upload-section {
+    margin-bottom: 2rem;
+}
+
+.drop-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: #fafafa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.drop-zone:hover {
+    border-color: #10a37f;
+    background: #f0fdf4;
+}
+
+.drop-zone.drag-over {
+    border-color: #10a37f;
+    background: #ecfdf5;
+    border-style: solid;
+}
+
+.upload-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    color: #6e6e80;
+}
+
+.drop-text {
+    font-size: 1rem;
+    color: #202123;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.drop-hint {
+    font-size: 0.875rem;
+    color: #6e6e80;
+}
+
+/* 파일 목록 */
+.file-list-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.file-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 0.5rem;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #fafafa;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    transition: background 0.2s ease;
+}
+
+.file-item:hover {
+    background: #f0f0f0;
+}
+
+.file-item:last-child {
+    margin-bottom: 0;
+}
+
+.file-name {
+    font-size: 0.875rem;
+    color: #202123;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-remove {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 1.25rem;
+    padding: 0 0.5rem;
+    transition: opacity 0.2s ease;
+}
+
+.file-remove:hover {
+    opacity: 0.7;
+}
+
+/* 입력 필드 */
+.input-section {
+    margin-bottom: 2rem;
+}
+
+.input-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #202123;
+    margin-bottom: 0.5rem;
+}
+
+.input-group input {
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #10a37f;
+    box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+}
+
+.input-group input::placeholder {
+    color: #9ca3af;
+}
+
+/* 미리보기 */
+.preview-section {
+    margin-bottom: 2rem;
+}
+
+.preview-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 0.5rem;
+}
+
+.preview-item {
+    padding: 1rem;
+    background: #fafafa;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+}
+
+.preview-item:last-child {
+    margin-bottom: 0;
+}
+
+.preview-original {
+    font-size: 0.875rem;
+    color: #6e6e80;
+    margin-bottom: 0.5rem;
+}
+
+.preview-arrow {
+    display: inline-block;
+    margin: 0 0.5rem;
+    color: #10a37f;
+}
+
+.preview-new {
+    font-size: 0.875rem;
+    color: #10a37f;
+    font-weight: 500;
+}
+
+/* 버튼 */
+.action-section {
+    margin-bottom: 1.5rem;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    background: #10a37f;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #0d8c6d;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
+}
+
+.btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* 메시지 */
+.message {
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.message.success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.message.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.message.info {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+/* 푸터 */
+.footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e5e5;
+}
+
+.footer p {
+    font-size: 0.875rem;
+    color: #6e6e80;
+}
+
+/* 스크롤바 스타일 */
+.file-list::-webkit-scrollbar,
+.preview-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-list::-webkit-scrollbar-track,
+.preview-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.file-list::-webkit-scrollbar-thumb,
+.preview-list::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+.file-list::-webkit-scrollbar-thumb:hover,
+.preview-list::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .header h1 {
+        font-size: 1.5rem;
+    }
+
+    .main-content {
+        padding: 1.5rem;
+    }
+
+    .input-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .drop-zone {
+        padding: 2rem 1rem;
+    }
+}
