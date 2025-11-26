@@ -18,6 +18,7 @@ const companyBInput = document.getElementById('companyB');
 const previewSection = document.getElementById('previewSection');
 const previewList = document.getElementById('previewList');
 const processBtn = document.getElementById('processBtn');
+const printBtn = document.getElementById('printBtn');
 const messageDiv = document.getElementById('message');
 const analyzeBtn = document.getElementById('analyzeBtn');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -58,6 +59,9 @@ function setupEventListeners() {
 
     // 처리 버튼
     processBtn.addEventListener('click', processFiles);
+
+    // 인쇄 버튼
+    printBtn.addEventListener('click', printFiles);
 
     // AI 분석 버튼
     analyzeBtn.addEventListener('click', analyzeFilesWithAI);
@@ -118,6 +122,7 @@ function addFiles(files) {
 
     updatePreview();
     processBtn.disabled = selectedFiles.length === 0;
+    printBtn.disabled = selectedFiles.length === 0;
     analyzeBtn.disabled = selectedFiles.length === 0 || !openaiApiKey;
 }
 
@@ -127,6 +132,7 @@ function removeFile(index) {
     updateFileList();
     updatePreview();
     processBtn.disabled = selectedFiles.length === 0;
+    printBtn.disabled = selectedFiles.length === 0;
     analyzeBtn.disabled = selectedFiles.length === 0 || !openaiApiKey;
 
     if (selectedFiles.length === 0) {
@@ -288,7 +294,7 @@ ${text.substring(0, 3000)}
                     }
                 ],
                 temperature: 0.3,
-                max_tokens: 500
+                max_completion_tokens: 500
             })
         });
 
@@ -442,7 +448,7 @@ async function testApiConnection() {
             body: JSON.stringify({
                 model: 'gpt-5-mini',
                 messages: [{ role: 'user', content: 'Hello' }],
-                max_tokens: 5
+                max_completion_tokens: 5
             })
         });
 
@@ -638,48 +644,138 @@ function updatePreview() {
     previewList.innerHTML = previews;
 }
 
-// 파일 처리 (다운로드)
-function processFiles() {
+// 파일명으로 정렬하는 함수 (넘버링 순서대로)
+function sortFilesByNumber(files) {
+    return files.map((file, index) => ({
+        file,
+        originalIndex: index,
+        newName: generateNewFileName(file)
+    }))
+    .filter(item => item.newName) // 유효한 파일명만
+    .sort((a, b) => {
+        // 넘버링 추출 (예: "0", "1", "2-1", "2-2", "3-1", "3-2", "4", "5")
+        const getNumber = (name) => {
+            const match = name.match(/^(\d+(?:-\d+)?)\./);
+            if (!match) return 999;
+
+            const num = match[1];
+            if (num.includes('-')) {
+                const [major, minor] = num.split('-').map(Number);
+                return major + (minor / 10);
+            }
+            return Number(num);
+        };
+
+        return getNumber(a.newName) - getNumber(b.newName);
+    });
+}
+
+// 일괄 인쇄
+async function printFiles() {
     if (selectedFiles.length === 0) {
         showMessage('파일을 선택해주세요.', 'error');
         return;
     }
 
-    let successCount = 0;
-    let failCount = 0;
+    showLoading('인쇄 준비 중...');
 
-    selectedFiles.forEach((file, index) => {
-        const newName = generateNewFileName(file);
+    try {
+        const sortedFiles = sortFilesByNumber(selectedFiles);
 
-        if (!newName) {
-            failCount++;
+        if (sortedFiles.length === 0) {
+            hideLoading();
+            showMessage('인쇄 가능한 파일이 없습니다. 필수 정보를 입력해주세요.', 'error');
             return;
         }
 
-        // 파일 다운로드
-        setTimeout(() => {
-            const url = URL.createObjectURL(file);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = newName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            successCount++;
+        // 인쇄 창 생성
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write('<html><head><title>파일 목록 인쇄</title>');
+        printWindow.document.write('<style>');
+        printWindow.document.write('body { font-family: "Pretendard", sans-serif; padding: 20px; }');
+        printWindow.document.write('h1 { font-size: 24px; margin-bottom: 20px; }');
+        printWindow.document.write('.file-item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; page-break-inside: avoid; }');
+        printWindow.document.write('.file-number { font-weight: bold; color: #10a37f; }');
+        printWindow.document.write('.file-name { margin-top: 5px; }');
+        printWindow.document.write('@media print { .no-print { display: none; } }');
+        printWindow.document.write('</style>');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write('<h1>MZ-TAX 파일명 변경 목록</h1>');
+        printWindow.document.write('<p class="no-print">총 ' + sortedFiles.length + '개 파일</p>');
 
-            // 마지막 파일 처리 후 메시지 표시
-            if (index === selectedFiles.length - 1) {
-                setTimeout(() => {
-                    if (failCount > 0) {
-                        showMessage(`처리 완료: ${successCount}개 성공, ${failCount}개 실패`, 'info');
-                    } else {
-                        showMessage(`${successCount}개 파일이 성공적으로 변경되었습니다!`, 'success');
-                    }
-                }, 100);
-            }
-        }, index * 100); // 순차적으로 다운로드
-    });
+        sortedFiles.forEach((item, index) => {
+            printWindow.document.write('<div class="file-item">');
+            printWindow.document.write('<div class="file-number">' + (index + 1) + '. ' + item.newName + '</div>');
+            printWindow.document.write('<div class="file-name">원본: ' + item.file.name + '</div>');
+            printWindow.document.write('</div>');
+        });
+
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+
+        // 인쇄 다이얼로그 표시
+        setTimeout(() => {
+            printWindow.print();
+            hideLoading();
+            showMessage('인쇄 준비가 완료되었습니다.', 'success');
+        }, 500);
+    } catch (error) {
+        hideLoading();
+        showMessage('인쇄 중 오류가 발생했습니다: ' + error.message, 'error');
+    }
+}
+
+// Zip 파일로 다운로드
+async function processFiles() {
+    if (selectedFiles.length === 0) {
+        showMessage('파일을 선택해주세요.', 'error');
+        return;
+    }
+
+    showLoading('Zip 파일 생성 중...');
+
+    try {
+        const zip = new JSZip();
+        const sortedFiles = sortFilesByNumber(selectedFiles);
+
+        if (sortedFiles.length === 0) {
+            hideLoading();
+            showMessage('변환 가능한 파일이 없습니다. 필수 정보를 입력해주세요.', 'error');
+            return;
+        }
+
+        // 파일들을 Zip에 추가
+        for (const item of sortedFiles) {
+            zip.file(item.newName, item.file);
+        }
+
+        // Zip 파일 생성
+        updateLoadingText('Zip 파일 압축 중...');
+        const content = await zip.generateAsync({
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: { level: 6 }
+        });
+
+        // Zip 파일 다운로드
+        const date = getCurrentDate();
+        const zipFileName = `MZ-TAX_변경파일_${date}.zip`;
+
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = zipFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        hideLoading();
+        showMessage(`${sortedFiles.length}개 파일이 Zip으로 다운로드되었습니다!`, 'success');
+    } catch (error) {
+        hideLoading();
+        showMessage('Zip 생성 중 오류가 발생했습니다: ' + error.message, 'error');
+    }
 }
 
 // 메시지 표시

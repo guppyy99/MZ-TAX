@@ -320,11 +320,15 @@ body {
     margin-bottom: 1.5rem;
 }
 
-.btn-primary {
-    width: 100%;
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1rem;
+}
+
+.btn-primary,
+.btn-secondary {
     padding: 0.875rem 1.5rem;
-    background: #10a37f;
-    color: white;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -332,6 +336,21 @@ body {
     cursor: pointer;
     transition: all 0.2s ease;
     font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-primary svg,
+.btn-secondary svg {
+    width: 20px;
+    height: 20px;
+}
+
+.btn-primary {
+    background: #10a37f;
+    color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -346,6 +365,29 @@ body {
 
 .btn-primary:disabled {
     background: #d1d5db;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-secondary {
+    background: white;
+    color: #202123;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+}
+
+.btn-secondary:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-secondary:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
     cursor: not-allowed;
     opacity: 0.6;
 }
@@ -641,6 +683,10 @@ body {
 
     .modal-footer {
         flex-direction: column;
+    }
+
+    .action-buttons {
+        grid-template-columns: 1fr;
     }
 
     .btn-secondary,
